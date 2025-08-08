@@ -2,7 +2,7 @@ import { Task } from "../model/todo-Model.js";
 export const todoOperations = {
     tasks:[],
     add(taskObject){
-        let task = new Task();
+        let task =[];
         for(let key in taskObject){
             task[key] = taskObject[key];
         }

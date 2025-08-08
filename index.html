@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>To-Do</title>
+    <link rel="stylesheet" href="styles/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script type="module" src="/scripts/controller/todo-Controller.js"></script>
   </head>
   <body>
@@ -14,21 +16,42 @@
         <div class="bg-white shadow-lg rounded-lg p-6 md:col-span-3">
           <div class="flex flex-col md:flex-row md:items-end gap-4">
             <div class="flex-1">
-              <label for="search" class="block text-gray-700 font-medium mb-1">Search</label>
-              <input
-                type="text"
-                id="search"
-                placeholder="Search by task name..."
-                class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
-              />
+              <label for="searchInput" class="block text-gray-700 font-medium mb-1">Search</label>
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  id="searchInput"
+                  placeholder="Search by task name..."
+                  class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  id="searchButton"
+                  class="bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
+                >
+                  Search
+                </button>
+              </div>
             </div>
             <div class="flex-1 flex flex-col">
-              <label for="filter-date" class="text-gray-700 font-medium mb-1">Filter by Date</label>
-              <input
-                type="date"
-                id="filter-date"
-                class="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
-              />
+              <label class="text-gray-700 font-medium mb-1">Filter by Date</label>
+              <div class="flex gap-2">
+                <input
+                  type="date"
+                  id="startDate"
+                  class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="date"
+                  id="endDate"
+                  class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  id="filterButton"
+                  class="bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
+                >
+                  Filter
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -37,34 +60,17 @@
         <div class="bg-white shadow-lg rounded-lg p-6 md:col-span-1">
           <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Add New Todo</h2>
           <div class="form-group mb-4">
-            <label class="text-gray-700 font-medium mb-1" for="id">Id :</label>
+            <label for="todo" class="font-medium mb-1">Task Name:</label>
             <input
               type="text"
-              placeholder="auto generated"
-              id="id"
-              class="w-full border border-gray-300 rounded-md p-2 bg-gray-100 focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div class="form-group mb-4">
-            <label for="name" class="font-medium mb-1" id="taskName">Task Name :</label>
-            <input
-              type="text"
-              placeholder="type task name here"
-              id="name"
+              id="todo"
+              placeholder="Enter task name"
               class="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
             />
+            <span id="name-error" class="text-red-500 text-sm mt-1"></span>
           </div>
           <div class="form-group mb-4">
-            <label for="desc" class="font-medium mb-1" id="taskDesc">Description :</label>
-            <textarea
-              name=""
-              id="description"
-              placeholder="enter your to do work"
-              class="w-full border border-gray-300 rounded-md p-2 resize-none h-24 focus:ring-2 focus:ring-blue-500"
-            ></textarea>
-          </div>
-          <div class="form-group mb-4">
-            <label for="date" class="font-medium mb-1">Date :</label>
+            <label for="date" class="font-medium mb-1">Date:</label>
             <input
               type="date"
               id="date"
@@ -82,20 +88,43 @@
         <!-- Todo List Section -->
         <div class="bg-white shadow-lg rounded-lg p-6 md:col-span-2">
           <h3 class="text-xl font-semibold mb-4 text-gray-800">Todo List</h3>
-          <button id="loadFromServer" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded mb-4 transition">Load from Server</button>
+          <div id="loading" class="text-gray-600 mb-4" style="display: none;">Loading...</div>
+          <button
+            id="loadFromServer"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded mb-4 transition"
+          >
+            Load from Server
+          </button>
           <table class="min-w-full border border-gray-300 rounded-lg overflow-hidden shadow-sm" id="todo-table">
             <thead class="bg-gray-100">
               <tr>
                 <th class="px-4 py-2 border text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">ID</th>
                 <th class="px-4 py-2 border text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Todo</th>
+                <th class="px-4 py-2 border text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Date</th>
                 <th class="px-4 py-2 border text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Completed</th>
-                <th class="px-4 py-2 border text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">User ID</th>
               </tr>
             </thead>
             <tbody id="todo-table-body" class="divide-y divide-gray-200">
               <!-- Todo rows will go here -->
             </tbody>
           </table>
+
+          <!-- Pagination Controls -->
+          <div class="flex justify-between items-center mt-4 border-t pt-4">
+            <button
+              id="prevPage"
+              class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span id="pageInfo" class="text-gray-600 text-sm">Page 1</span>
+            <button
+              id="nextPage"
+              class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 transition"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

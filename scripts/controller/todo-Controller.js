@@ -1,64 +1,149 @@
-//DOM Manipulation for Todo Application
-import { doAjaxCall } from '../data/service/ajax.js';
-import { todoOperations } from '../data/service/todo-operations.js';
+import { doAjaxCall } from "../data/service/ajax.js";
+import { CONSTANTS } from "../data/service/config.js";
+import { validateName } from "../data/service/validation.js";
 
-window.addEventListener('load', bindEvents);
+// Global variables
+let allTodos = []; // All todos with mocked dates
+let filteredTodos = []; // Filtered todos for display
+let currentPage = 0; // Current page
+const limit = 10; // Todos per page
+
+// Bind events on page load
+window.addEventListener("load", bindEvents);
+
 function bindEvents() {
-    //register an event listener for the addTodo button
-    document.querySelector('#addTodo').addEventListener('click', addTask);
-    document.querySelector('#loadFromServer').addEventListener('click', loadFromServer);
+  document.querySelector("#addTodo").addEventListener("click", addTask);
+  document.querySelector("#loadFromServer").addEventListener("click", loadFromServer);
+  document.querySelector("#searchButton").addEventListener("click", applyFilters);
+  document.querySelector("#filterButton").addEventListener("click", applyFilters);
+  document.querySelector("#nextPage").addEventListener("click", nextPage);
+  document.querySelector("#prevPage").addEventListener("click", prevPage);
 }
-export async function addTask() {
-  console.log("Add Task button clicked");
 
-  const taskObject = {};
-  const fields = ["id", "name", "description", "date"];
-
-  for (let field of fields) {
-    taskObject[field] = document.querySelector(`#${field}`).value.trim();
+// Validate task name
+function verifyFields(task) {
+  document.querySelector("#name-error").innerText = "";
+  const nameError = validateName(task.name);
+  if (nameError) {
+    document.querySelector("#name-error").innerText = nameError;
+    return false;
   }
+  return true;
+}
 
+// Load all todos from server
+async function loadFromServer() {
+  document.querySelector("#loading").style.display = "block"; // Show loading
   try {
-    const res = await axios.post("https://dummyjson.com/todos/add", {
+    const result = await doAjaxCall(150, 0); // Fetch all todos
+    allTodos = result.todos.map(todo => ({
+      ...todo,
+      date: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString().split("T")[0] // Mock date
+    }));
+    applyFilters(); // Apply filters and display
+    document.querySelector("#loading").style.display = "none";
+  } catch (error) {
+    document.querySelector("#loading").style.display = "none";
+    console.error("Error loading todos:", error);
+    document.querySelector("#name-error").innerText = "Failed to load todos";
+  }
+}
+
+// Filter todos by search and date
+function applyFilters() {
+  const searchTerm = document.querySelector("#searchInput").value.toLowerCase();
+  const fromDate = document.querySelector("#startDate").value;
+  const toDate = document.querySelector("#endDate").value;
+
+  filteredTodos = allTodos.filter(todo => {
+    const matchesSearch = todo.todo.toLowerCase().includes(searchTerm);
+    const matchesDate = (!fromDate || todo.date >= fromDate) && (!toDate || todo.date <= toDate);
+    return matchesSearch && matchesDate;
+  });
+
+  currentPage = 0; // Reset to first page
+  printTaskTable();
+  updatePageInfo();
+  updatePaginationButtons();
+}
+
+// Display todos for current page
+function printTaskTable() {
+  document.querySelector("#todo-table-body").innerHTML = "";
+  const start = currentPage * limit;
+  const end = start + limit;
+  filteredTodos.slice(start, end).forEach(printTask);
+}
+
+// Create a table row for a single todo
+function printTask(taskObject) {
+  const tbody = document.querySelector("#todo-table-body");
+  const tr = tbody.insertRow();
+  // Display specific fields in order: id, todo, date, completed
+  [taskObject.id, taskObject.todo, taskObject.date, taskObject.completed ? "Yes" : "No"].forEach(value => {
+    const td = tr.insertCell();
+    td.innerText = value;
+  });
+}
+
+// Update page info
+function updatePageInfo() {
+  document.querySelector("#pageInfo").innerText = `Page ${currentPage + 1}`;
+}
+
+// Update pagination buttons
+function updatePaginationButtons() {
+  const prevBtn = document.querySelector("#prevPage");
+  const nextBtn = document.querySelector("#nextPage");
+  prevBtn.disabled = currentPage === 0;
+  nextBtn.disabled = (currentPage + 1) * limit >= filteredTodos.length;
+}
+
+// Next page
+function nextPage() {
+  if ((currentPage + 1) * limit < filteredTodos.length) {
+    currentPage++;
+    printTaskTable();
+    updatePageInfo();
+    updatePaginationButtons();
+  }
+}
+
+// Previous page
+function prevPage() {
+  if (currentPage > 0) {
+    currentPage--;
+    printTaskTable();
+    updatePageInfo();
+    updatePaginationButtons();
+  }
+}
+
+// Add new todo
+async function addTask() {
+  const taskObject = {
+    name: document.querySelector("#todo").value.trim(),
+    date: document.querySelector("#date").value.trim() || new Date().toISOString().split("T")[0]
+  };
+
+  if (!verifyFields(taskObject)) return;
+
+  document.querySelector("#loading").style.display = "block"; // Show loading
+  try {
+    const res = await axios.post(`${CONSTANTS.API_URL}/add`, {
       todo: taskObject.name,
       completed: false,
-      userId: 1 // required by dummyjson API
+      userId: 1
     });
-    
-    console.log("Task added:", res.data);
-
-    // Clear form fields after success
-    fields.forEach(field => document.querySelector(`#${field}`).value = "");
-
-    // Optionally re-fetch and render updated list
-    // loadTodos();
+    allTodos.push({ ...res.data, date: taskObject.date }); // Add with date
+    applyFilters(); // Refresh display
+    document.querySelector("#todo").value = "";
+    document.querySelector("#date").value = "";
+    document.querySelector("#name-error").innerText = "";
+    document.querySelector("#loading").style.display = "none";
   } catch (error) {
+    document.querySelector("#loading").style.display = "none";
     console.error("Error adding task:", error);
-    alert("Failed to add task. Please try again.");
+    document.querySelector("#name-error").innerText = "Failed to add task";
   }
-}
-async function loadFromServer() {
-    try {
-    const result = await doAjaxCall();
-    console.log("Result from server:", result.todos);
-    todoOperations.tasks = result['todos'];
-    printTaskTable(todoOperations.tasks);
-    } catch (error) {
-        console.log("Error loading data from server:", error);
-    }
-
-}
-function printTaskTable(tasks) {
-    // Clear the table body before adding rows
-    document.querySelector('#todo-table-body').innerHTML = "";
-    tasks.forEach(printTask);
-}
-function printTask(taskObject) {
-    const tbody = document.querySelector('#todo-table-body');
-    const tr = tbody.insertRow();
-    for (let key in taskObject) {
-        const td = tr.insertCell();
-        td.innerText = taskObject[key];
-    }
-     
 }
