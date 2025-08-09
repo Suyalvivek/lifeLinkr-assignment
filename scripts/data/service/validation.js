@@ -4,18 +4,3 @@ export function validateName(str) {
     return regex.test(str.trim()) ? "" : "Name can only contain letters, numbers, underscores, or spaces.";
 }
 
-// Validates description with minimal restrictions (allows any characters, no minimum length)
-export function validateDesc(str) {
-    return str.trim() ? "" : "Description cannot be empty."; // Only checks for non-empty, allows any characters
-}
-
-// Validates ID with minimal restrictions (allows any number, no strict digit limit)
-export function validateId(str) {
-    const regex = /^[0-9]*$/; // Allows any number of digits (including empty)
-    return regex.test(str.trim()) ? "" : "ID must be a number.";
-}
-
-// Makes date validation optional (accepts empty or valid date format)
-export function validateDate(str) {
-    return !str.trim() || /^\d{4}-\d{2}-\d{2}$/.test(str.trim()) ? "" : "Invalid date format (use YYYY-MM-DD).";
-}
